@@ -29,8 +29,8 @@ export function deleteQuestion(id: string) {
   return request.delete<any, ApiResponse<void>>(`/questions/${id}`);
 }
 
-export function exportQuestions(bankId: string, categoryId?: string) {
-  return downloadFile('/questions/export', 'questions.xlsx', { bankId, categoryId });
+export function exportQuestions(bankId: string, categoryId?: string, filename = 'questions.xlsx') {
+  return downloadFile('/questions/export', filename, { bankId, categoryId });
 }
 
 export function importQuestions(bankId: string, file: File) {
@@ -39,4 +39,11 @@ export function importQuestions(bankId: string, file: File) {
   return request.post<any, ApiResponse<ImportResult>>('/questions/import', formData, {
     params: { bankId },
   });
+}
+
+export function createBankFromExcel(file: File, name: string) {
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('name', name);
+  return request.post<any, ApiResponse<{ bankId: string; summary: ImportResult }>>('/questions/import/new-bank', formData);
 }
