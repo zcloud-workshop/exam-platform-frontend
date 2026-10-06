@@ -1,10 +1,13 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Table, Button, Modal, Form, Input, message, Popconfirm, Space, Select, Switch, Tabs, Tag,
-  List, Card, Upload, Alert,
+  List, Card, Upload, Alert, Dropdown,
 } from 'antd';
 import { PlusOutlined, ShareAltOutlined, DownloadOutlined, UploadOutlined } from '@ant-design/icons';
+import { saveBlob } from '@/api/helpers';
+import { createBankFromExcel, exportQuestions, importQuestions } from '@/api/questions';
+import type { ImportResult } from '@/types/question';
 import { getAllPages } from '@/utils/pagination';
 import type { UploadProps } from 'antd';
 import { useAuthStore } from '@/stores/authStore';
@@ -20,6 +23,7 @@ import {
   removeBankShare,
   exportBankArchive,
   importBankArchive,
+  createBankFromArchive,
 } from '@/api/question-banks';
 import type {
   QuestionBankResponse,
@@ -64,6 +68,14 @@ export default function QuestionBanksPage() {
   const [importMode, setImportMode] = useState<ArchiveImportMode>('skip');
   const [importSummary, setImportSummary] = useState<BankImportSummary | null>(null);
   const [importing, setImporting] = useState(false);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importTargetId, setImportTargetId] = useState('new');
+  const [importName, setImportName] = useState('');
+  const [readingFile, setReadingFile] = useState(false);
+  const [excelSummary, setExcelSummary] = useState<ImportResult | null>(null);
+  const [exportingId, setExportingId] = useState<string | null>(null);
+  const [bankRevision, setBankRevision] = useState(0);
+  const fileReadId = useRef(0);
 
   const isAdmin = useAuthStore((s) => s.hasRole(Role.super_admin, Role.question_admin));
   const user = useAuthStore((s) => s.user);
@@ -83,6 +95,7 @@ export default function QuestionBanksPage() {
   const fetchAllBanks = useCallback(async () => {
     const banks = await getAllPages(getQuestionBanks);
     setAllBanks(banks);
+    return banks;
   }, []);
 
   useEffect(() => {
@@ -183,59 +196,146 @@ export default function QuestionBanksPage() {
     return isAdmin || record.createdBy === user?.sub;
   };
 
-  // 归档导出: 下载为 JSON 文件
-  const handleExport = async (bankId: string) => {
-    try {
-      const res = await exportBankArchive(bankId);
-      const bank = allBanks.find((b) => b.id === bankId) ?? currentBank;
-      const filename = `${bank?.name ?? 'bank'}-archive.json`;
-      const blob = new Blob([JSON.stringify(res.data, null, 2)], { type: 'application/json' });
-      const link = document.createElement('a');
-      link.href = URL.createObjectURL(blob);
-      link.download = filename;
-      link.click();
-      URL.revokeObjectURL(link.href);
-      message.success(t('questionBanks_page.exported'));
-    } catch { /* handled by interceptor */ }
+  const canImport = (bank: QuestionBankResponse) => {
+    return isOwnerOrAdmin(bank) || bank.permission === 'owner' || bank.permission === 'editor';
   };
 
-  const openImportModal = () => {
+  const handleExport = async (bank: QuestionBankResponse, format: string) => {
+    if (exportingId) return;
+    setExportingId(bank.id);
+    try {
+      if (format === 'excel') {
+        await exportQuestions(bank.id, undefined, `${bank.name}.xlsx`);
+      } else {
+        const res = await exportBankArchive(bank.id);
+        const blob = new Blob([JSON.stringify(res.data, null, 2)], { type: 'application/json' });
+        saveBlob(blob, `${bank.name}-archive.json`);
+      }
+      message.success(t('questionBanks_page.exported'));
+    } catch { /* handled by interceptor */ }
+    finally { setExportingId(null); }
+  };
+
+  const openImportModal = (bankId = 'new') => {
+    fileReadId.current++;
     setImportArchive(null);
+    setImportFile(null);
+    setImportTargetId(bankId);
+    setImportName('');
     setImportMode('skip');
     setImportSummary(null);
+    setExcelSummary(null);
+    setReadingFile(false);
     setImportModalOpen(true);
   };
 
+  const transferActions = (bank: QuestionBankResponse) => (
+    <>
+      <Dropdown
+        trigger={['click']}
+        menu={{
+          items: [
+            { key: 'json', label: t('questionBanks_page.jsonFormat') },
+            { key: 'excel', label: t('questionBanks_page.excelFormat') },
+          ],
+          onClick: ({ key }) => handleExport(bank, key),
+        }}
+      >
+        <Button size="small" icon={<DownloadOutlined />} loading={exportingId === bank.id} disabled={!!exportingId}>
+          {t('questionBanks_page.exportBank')}
+        </Button>
+      </Dropdown>
+      {canImport(bank) && (
+        <Button size="small" icon={<UploadOutlined />} onClick={() => openImportModal(bank.id)}>
+          {t('questionBanks_page.importBank')}
+        </Button>
+      )}
+    </>
+  );
+
   const importUploadProps: UploadProps = {
-    accept: '.json,application/json',
+    accept: '.json,.xlsx',
     maxCount: 1,
     showUploadList: false,
-    beforeUpload: (file) => {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        try {
-          const parsed = JSON.parse(e.target?.result as string) as BankArchive;
-          if (!parsed.meta || !Array.isArray(parsed.categories) || !Array.isArray(parsed.questions)) {
-            message.error(t('questionBanks_page.invalidArchive'));
-            return;
-          }
-          setImportArchive(parsed);
-        } catch {
-          message.error(t('questionBanks_page.invalidJson'));
+    disabled: importing || readingFile,
+    beforeUpload: async (file) => {
+      const readId = ++fileReadId.current;
+      setImportArchive(null);
+      setImportFile(null);
+      setImportName('');
+      if (file.size > 10 * 1024 * 1024) {
+        message.error(t('questionBanks_page.fileTooLarge'));
+        return false;
+      }
+      const extension = file.name.split('.').pop()?.toLowerCase();
+      if (extension !== 'json' && extension !== 'xlsx') {
+        message.error(t('questionBanks_page.invalidFileType'));
+        return false;
+      }
+      if (extension === 'xlsx') {
+        setImportFile(file);
+        setImportName(file.name.replace(/\.xlsx$/i, ''));
+        return false;
+      }
+      setReadingFile(true);
+      try {
+        const parsed = JSON.parse(await file.text()) as BankArchive | null;
+        if (fileReadId.current !== readId) return false;
+        if (!parsed?.meta || typeof parsed.meta.name !== 'string' || !Array.isArray(parsed.categories) || !Array.isArray(parsed.questions)) {
+          message.error(t('questionBanks_page.invalidArchive'));
+          return false;
         }
-      };
-      reader.readAsText(file);
-      return false; // 阻止自动上传, 仅本地解析
+        if (parsed.meta.version !== 1) {
+          message.error(t('questionBanks_page.unsupportedVersion'));
+          return false;
+        }
+        setImportArchive(parsed);
+        setImportFile(file);
+        setImportName(parsed.meta.name);
+      } catch {
+        if (fileReadId.current === readId) message.error(t('questionBanks_page.invalidJson'));
+      } finally {
+        if (fileReadId.current === readId) setReadingFile(false);
+      }
+      return false;
     },
   };
 
   const handleImportSubmit = async () => {
-    if (!currentBank || !importArchive) return;
+    if (!importFile || importing || readingFile) return;
+    if (importTargetId === 'new' && !importName.trim()) {
+      message.error(t('questionBanks_page.nameRequired'));
+      return;
+    }
     setImporting(true);
     try {
-      const res = await importBankArchive(currentBank.id, importArchive, importMode);
-      setImportSummary(res.data);
-      message.success(t('questionBanks_page.imported'));
+      if (importArchive) {
+        const res = importTargetId === 'new'
+          ? await createBankFromArchive(importArchive, importName.trim())
+          : await importBankArchive(importTargetId, importArchive, importMode);
+        setImportSummary('summary' in res.data ? res.data.summary : res.data);
+      } else {
+        const res = importTargetId === 'new'
+          ? await createBankFromExcel(importFile, importName.trim())
+          : await importQuestions(importTargetId, importFile);
+        const summary = 'summary' in res.data ? res.data.summary : res.data;
+        setExcelSummary(summary);
+        setImportSummary({
+          categoriesImported: 0,
+          questionsImported: summary.success,
+          skipped: 0,
+          errors: summary.errors.map((error) => ({
+            message: `${t('questions_page.row', { row: error.row })}: ${error.message}`,
+          })),
+        });
+      }
+      const banks = await fetchAllBanks();
+      if (currentBank?.id === importTargetId) {
+        const updated = banks.find((bank) => bank.id === currentBank.id);
+        if (updated) setCurrentBank(updated);
+        setBankRevision((revision) => revision + 1);
+      }
+      await fetchData();
     } catch {
       /* handled by interceptor */
     } finally {
@@ -274,14 +374,7 @@ export default function QuestionBanksPage() {
             <Tag color={isOwner ? 'blue' : 'green'}>
               {permissionLabel(perm)}
             </Tag>
-            <Button icon={<DownloadOutlined />} onClick={() => handleExport(currentBank.id)}>
-              {t('questionBanks_page.exportArchive')}
-            </Button>
-            {canEditContent && (
-              <Button icon={<UploadOutlined />} onClick={openImportModal}>
-                {t('questionBanks_page.importArchive')}
-              </Button>
-            )}
+            {transferActions(currentBank)}
             {isOwner && (
               <Button icon={<ShareAltOutlined />} onClick={() => openShareModal(currentBank.id)}>
                 {t('questionBanks_page.share')}
@@ -289,7 +382,7 @@ export default function QuestionBanksPage() {
             )}
           </Space>
         </div>
-        <Tabs items={tabItems} />
+        <Tabs key={`${currentBank.id}-${bankRevision}`} items={tabItems} />
       </div>
     );
   }
@@ -332,10 +425,11 @@ export default function QuestionBanksPage() {
       title: t('common.actions'),
       key: 'actions',
       render: (_: unknown, record: QuestionBankResponse) => (
-        <Space>
+        <Space wrap>
           <Button type="link" size="small" onClick={() => handleEnter(record)}>
             {t('questionBanks_page.enter')}
           </Button>
+          {transferActions(record)}
           {isOwnerOrAdmin(record) && (
             <Button type="link" size="small" onClick={() => openEdit(record)}>
               {t('common.edit')}
@@ -364,9 +458,14 @@ export default function QuestionBanksPage() {
         <>
           <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
             <h2>{t('questionBanks_page.title')}</h2>
-            <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
-              {t('questionBanks_page.createBank')}
-            </Button>
+            <Space wrap>
+              <Button icon={<UploadOutlined />} onClick={() => openImportModal()}>
+                {t('questionBanks_page.importBank')}
+              </Button>
+              <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
+                {t('questionBanks_page.createBank')}
+              </Button>
+            </Space>
           </div>
 
           {isMobile ? (
@@ -391,6 +490,7 @@ export default function QuestionBanksPage() {
                     )}
                     <Space wrap style={{ marginTop: 12 }}>
                       <Button size="small" type="primary" onClick={() => handleEnter(record)}>{t('questionBanks_page.enter')}</Button>
+                      {transferActions(record)}
                       {isOwnerOrAdmin(record) && (
                         <Button size="small" onClick={() => openEdit(record)}>{t('common.edit')}</Button>
                       )}
@@ -507,43 +607,73 @@ export default function QuestionBanksPage() {
       </Modal>
 
       <Modal
-        title={t('questionBanks_page.importArchive')}
+        title={t('questionBanks_page.importBank')}
         open={importModalOpen}
-        onCancel={() => setImportModalOpen(false)}
+        closable={!importing}
+        maskClosable={!importing}
+        keyboard={!importing}
+        onCancel={() => { fileReadId.current++; setImportModalOpen(false); }}
         footer={null}
         width={isMobile ? '90%' : 560}
         destroyOnClose
       >
         {!importSummary ? (
           <Space direction="vertical" style={{ width: '100%' }} size="middle">
+            <Alert type="info" showIcon message={t('questionBanks_page.formatHint')} />
+            <div>
+              <div style={{ marginBottom: 8 }}>{t('questionBanks_page.importTarget')}</div>
+              <Select
+                value={importTargetId}
+                onChange={setImportTargetId}
+                disabled={importing}
+                style={{ width: '100%' }}
+                options={[
+                  { value: 'new', label: t('questionBanks_page.newBankTarget') },
+                  ...allBanks.filter(canImport).map((bank) => ({ value: bank.id, label: bank.name })),
+                ]}
+              />
+            </div>
+            {importTargetId === 'new' && (
+              <Input
+                aria-label={t('questionBanks_page.name')}
+                placeholder={t('questionBanks_page.nameRequired')}
+                value={importName}
+                onChange={(event) => setImportName(event.target.value)}
+                disabled={importing}
+              />
+            )}
             <Upload {...importUploadProps}>
-              <Button icon={<UploadOutlined />}>{t('questionBanks_page.chooseArchive')}</Button>
+              <Button icon={<UploadOutlined />} loading={readingFile}>{t('questionBanks_page.chooseFile')}</Button>
             </Upload>
             {importArchive && (
               <div style={{ color: 'var(--muted)' }}>
                 {t('questionBanks_page.archiveLoaded', { name: importArchive.meta.name, categories: importArchive.categories.length, questions: importArchive.questions.length })}
               </div>
             )}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span>{t('questionBanks_page.conflictMode')}</span>
-              <Select
-                value={importMode}
-                onChange={setImportMode}
-                style={{ width: 200 }}
-                options={[
-                  { label: t('questionBanks_page.skip'), value: 'skip' },
-                  { label: t('questionBanks_page.overwrite'), value: 'overwrite' },
-                  { label: t('questionBanks_page.merge'), value: 'merge' },
-                ]}
-              />
-            </div>
-            {importMode === 'overwrite' && (
+            {importFile && !importArchive && <div>{importFile.name}</div>}
+            {importArchive && importTargetId !== 'new' && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span>{t('questionBanks_page.conflictMode')}</span>
+                <Select
+                  value={importMode}
+                  onChange={setImportMode}
+                  disabled={importing}
+                  style={{ width: 200 }}
+                  options={[
+                    { label: t('questionBanks_page.skip'), value: 'skip' },
+                    { label: t('questionBanks_page.overwrite'), value: 'overwrite' },
+                    { label: t('questionBanks_page.merge'), value: 'merge' },
+                  ]}
+                />
+              </div>
+            )}
+            {importArchive && importTargetId !== 'new' && importMode === 'overwrite' && (
               <Alert type="warning" showIcon message={t('questionBanks_page.overwriteWarning')} />
             )}
             <Button
               type="primary"
               block
-              disabled={!importArchive}
+              disabled={!importFile || readingFile || (importTargetId === 'new' && !importName.trim())}
               loading={importing}
               onClick={handleImportSubmit}
             >
@@ -553,9 +683,11 @@ export default function QuestionBanksPage() {
         ) : (
           <Space direction="vertical" style={{ width: '100%' }} size="small">
             <Alert
-              type="success"
+              type={importSummary.errors.length > 0 ? 'warning' : 'success'}
               showIcon
-              message={t('questionBanks_page.importSummary', { categories: importSummary.categoriesImported, questions: importSummary.questionsImported, skipped: importSummary.skipped })}
+              message={excelSummary
+                ? t('questions_page.imported', { success: excelSummary.success, total: excelSummary.total, failed: excelSummary.failed })
+                : t('questionBanks_page.importSummary', { categories: importSummary.categoriesImported, questions: importSummary.questionsImported, skipped: importSummary.skipped })}
             />
             {importSummary.errors.length > 0 && (
               <Alert
@@ -567,10 +699,9 @@ export default function QuestionBanksPage() {
             )}
             <Button
               block
+              disabled={importing}
               onClick={() => {
                 setImportModalOpen(false);
-                fetchData();
-                fetchAllBanks();
               }}
             >
               {t('common.done')}
