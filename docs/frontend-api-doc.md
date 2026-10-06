@@ -82,7 +82,7 @@
 | `createBankFromArchive` | `POST /question-banks/import` | `{ archive, name }`, 从 JSON 创建新题库 | `{ bankId, summary: BankImportSummary }` |
 | `createBankFromExcel` | `POST /questions/import/new-bank` | multipart: `file`, `name`, 从 Excel 创建新题库 | `{ bankId, summary: ImportResult }` |
 
-`BankArchive` 由 `meta`、`categories`、`questions` 组成. `mode` 为 `skip`、`overwrite` 或 `merge`; 页面默认 `skip`. 导入摘要包含 `categoriesImported`、`questionsImported`、`skipped`、`errors`.
+`BankArchive` 版本 `2` 由 `meta`, `categories`, `questions`, `images` 组成, 兼容版本 `1` 的旧归档. 图片条目为 `{ questionId, originalName, mimeType, size, optionKey?, data }`, `data` 为原文件 Base64, 不保存临时 URL. `mode` 为 `skip`, `overwrite` 或 `merge`; 页面默认 `skip`. 导入摘要包含 `categoriesImported`, `questionsImported`, `imagesImported`, `skipped`, `errors`, Excel 摘要也增加 `imagesImported`. 题库 JSON/Excel 导入导出请求单独使用 180 秒超时, 文件上限为 100 MiB.
 
 ## 分类、题目与试卷
 
@@ -182,6 +182,6 @@
 | `deleteFile` | `DELETE /files/:id` | 文件 ID | `void` |
 | `getLogs` | `GET /logs` | 分页、`userId`, `username`, `action`, `resource`, `startDate`, `endDate` | `PaginatedResult<LogResponse>` |
 
-下载工具 `downloadFile(url, filename, params?)` 用 `responseType: 'blob'` 获取内容, 通过 `saveBlob(blob, filename)` 创建对象 URL、触发下载并释放 URL. 它返回 `Promise<void>`, 不是供调用方继续处理的 Blob. JSON 归档复用 `saveBlob`; 题库列表中的 Excel 导出使用题库名称作为文件名.
+下载工具 `downloadFile(url, filename, params?, timeout?)` 用 `responseType: 'blob'` 获取内容, 超时默认 30000 毫秒, 通过 `saveBlob(blob, filename)` 创建对象 URL, 触发下载并释放 URL. 它返回 `Promise<void>`, 不是供调用方继续处理的 Blob. JSON 归档复用 `saveBlob`; 题库列表中的 Excel 导出使用题库名称作为文件名, 超时为 180000 毫秒.
 
 此处不保留前端无法核实的限流次数、Cookie 有效期、删除约束、上传容量或数据库事务细节. 需要这些规则时查阅对应后端实现与接口文档.
