@@ -106,7 +106,8 @@ docker compose up -d --no-build web
 - `/api/` 直接代理到后端, 保留 `/api` 前缀和查询参数, 不将 API 错误转换成页面. `proxy_pass` 不带 URI 的行为见 [Nginx 代理文档](https://nginx.org/en/docs/http/ngx_http_proxy_module.html#proxy_pass).
 - 通过 Docker DNS 动态解析后端地址, 支持后端容器重建后的 IP 变化. 当前镜像版本支持 upstream `resolve`, 见 [Nginx upstream 文档](https://nginx.org/en/docs/http/ngx_http_upstream_module.html#server).
 - `index.html` 和普通静态文件使用 `no-cache`, 带构建 hash 的 `/assets/` 文件使用长期缓存. 缺失文件返回 404. 当前使用 HashRouter, 不需要将任意服务器路径回退到首页. 缓存依据: [HTTP 缓存说明](https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/Caching).
-- 请求体上限为 11 MiB, 给后端 10 MiB 文件上传限制预留 multipart 开销. 已有 HTTPS 入口也需允许相应请求体大小.
+- 请求体上限为 101 MiB, 给题库 JSON/Excel 的 100 MiB 导入限制预留请求开销. 普通文件和单张题目图片仍受后端 10 MiB 限制. 已有 HTTPS 入口也需允许相应请求体大小.
+- API 代理读写超时为 180 秒, 与题库导入导出客户端超时一致, 为携带原图片的传输预留处理时间.
 - AI 请求仍受前端 Axios 的 30 秒超时约束, 不因 Nginx 部署改变. 排查超时时同时检查浏览器、入口、Nginx 和后端日志.
 
 | 现象 | 检查方式 |
