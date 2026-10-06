@@ -52,3 +52,10 @@ export function importBankArchive(bankId: string, archive: BankArchive, mode?: A
     mode,
   });
 }
+
+export function createBankFromArchive(archive: BankArchive, name: string) {
+  return request.post<any, ApiResponse<{ bankId: string; summary: BankImportSummary }>>('/question-banks/import', {
+    archive,
+    name,
+  });
+}
