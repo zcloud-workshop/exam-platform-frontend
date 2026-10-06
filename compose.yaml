@@ -1,0 +1,16 @@
+services:
+  web:
+    build: .
+    image: exam-platform-frontend:${IMAGE_TAG:-local}
+    restart: unless-stopped
+    environment:
+      BACKEND_UPSTREAM: ${BACKEND_UPSTREAM:-app:3000}
+    ports:
+      - '127.0.0.1:${FRONTEND_PORT:-8080}:80'
+    networks:
+      - backend
+
+networks:
+  backend:
+    external: true
+    name: ${BACKEND_NETWORK:-exam-platform_default}
