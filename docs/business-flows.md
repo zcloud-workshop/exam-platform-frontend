@@ -131,20 +131,25 @@ flowchart TD
 
 ```mermaid
 flowchart LR
-  Bank["题库详情"] --> Export["GET export"]
-  Export --> JSON["meta + categories + questions"]
-  JSON --> Download["浏览器下载 JSON 文件"]
-  Bank --> Import["选择本地 JSON 文件"]
+  Bank["题库列表或详情"] --> Export["选择 JSON 或 Excel 导出"]
+  Export --> Download["下载归档 JSON 或题目 Excel"]
+  Bank --> Import["选择 JSON 或 Excel 文件及目标题库"]
   Import --> Validate{"可解析且有必需结构?"}
   Validate -->|"否"| Error["提示文件错误"]
-  Validate -->|"是"| Mode["选择 skip / overwrite / merge"]
-  Mode --> Submit["POST import, 提交 archive 和 mode"]
+  Validate -->|"是"| Target{"新建题库?"}
+  Target -->|"是"| Create["指定名称, 新建与导入一起提交"]
+  Target -->|"否, JSON"| Mode["选择 skip / overwrite / merge"]
+  Target -->|"否, Excel"| Submit["提交导入请求"]
+  Mode --> Submit
+  Create --> Summary
   Submit --> Summary["显示导入数量、跳过数量和错误"]
 ```
 
-归档只包含题库元信息、分类和题目, 不包含试卷、考试、成绩或共享名单. 文件名为 `<题库名>-archive.json`. 本地校验只检查 `meta` 存在且 `categories`、`questions` 是数组, 内容合法性由后端处理.
+题库列表顶部提供一键导入, 每行、移动端卡片和题库详情提供一键导入及导出. 导出菜单可选 JSON 或 Excel, 文件名分别为 `<题库名>-archive.json` 和 `<题库名>.xlsx`. JSON 包含题库元信息、分类树和完整双语题目; Excel 包含题目、分类名称、主语言和翻译, 不含分类层级. 两种格式均不包含试卷、考试、成绩、共享名单或题目图片.
 
-导入默认使用 `skip`, 选择 `overwrite` 时显示覆盖提示. 冲突匹配和合并细节不在前端实现. 点击结果页的完成按钮刷新题库列表与切换列表; 当前代码没有显式重新加载已挂载的内容标签页.
+导入可选择新建题库或有编辑权限的已有题库. 文件支持 `.json` 和 `.xlsx`, 最大 10 MB. JSON 本地检查元信息、分类和题目数组以及版本 `1`, 其余内容由后端校验. 新题库名称从归档名称或 Excel 文件名填入, 可修改; 新建及导入一起提交, 错误时回滚. Excel 新建题库按分类名称创建平级分类.
+
+JSON 导入已有题库默认使用 `skip`, 选择 `overwrite` 时显示覆盖提示. Excel 导入已有题库显示逐行成功和失败数量及行错误. 导入后立即刷新题库列表和切换列表; 如果导入到当前题库, 重新加载内容标签页. 正在导入时禁止重复提交和关闭弹窗.
 
 依据: [题库归档处理](../src/pages/QuestionBanks/index.tsx), [归档类型](../src/types/question-bank.ts).
 
