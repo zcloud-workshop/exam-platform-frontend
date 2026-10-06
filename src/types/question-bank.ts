@@ -82,17 +82,28 @@ export interface ArchiveQuestion {
   translations?: string | null;
 }
 
+export interface ArchiveQuestionImage {
+  questionId: string;
+  originalName: string;
+  mimeType: string;
+  size: number;
+  optionKey?: string | null;
+  data: string;
+}
+
 /** GET /question-banks/:id/export 响应体 */
 export interface BankArchive {
   meta: ArchiveMeta;
   categories: ArchiveCategory[];
   questions: ArchiveQuestion[];
+  images?: ArchiveQuestionImage[];
 }
 
 /** POST /question-banks/:id/import 结果摘要 */
 export interface BankImportSummary {
   categoriesImported: number;
   questionsImported: number;
+  imagesImported?: number;
   skipped: number;
   errors: { message: string }[];
 }
