@@ -1,7 +1,7 @@
 import request from './request';
 
-export async function downloadFile(url: string, filename: string, params?: Record<string, string | undefined>) {
-  const response = await request.get(url, { responseType: 'blob', params });
+export async function downloadFile(url: string, filename: string, params?: Record<string, string | undefined>, timeout = 30000) {
+  const response = await request.get(url, { responseType: 'blob', params, timeout });
   const blob = new Blob([response as unknown as BlobPart]);
   saveBlob(blob, filename);
 }
