@@ -42,7 +42,7 @@ export function removeBankShare(bankId: string, shareId: string) {
 
 /** 导出题库为 JSON 归档 (分类树 + 完整题目) */
 export function exportBankArchive(bankId: string) {
-  return request.get<any, ApiResponse<BankArchive>>(`/question-banks/${bankId}/export`);
+  return request.get<any, ApiResponse<BankArchive>>(`/question-banks/${bankId}/export`, { timeout: 180000 });
 }
 
 /** 将归档导入到指定题库, mode: skip(默认) | overwrite | merge */
@@ -50,12 +50,12 @@ export function importBankArchive(bankId: string, archive: BankArchive, mode?: A
   return request.post<any, ApiResponse<BankImportSummary>>(`/question-banks/${bankId}/import`, {
     archive,
     mode,
-  });
+  }, { timeout: 180000 });
 }
 
 export function createBankFromArchive(archive: BankArchive, name: string) {
   return request.post<any, ApiResponse<{ bankId: string; summary: BankImportSummary }>>('/question-banks/import', {
     archive,
     name,
-  });
+  }, { timeout: 180000 });
 }
