@@ -64,6 +64,7 @@ export interface QuestionResponse {
 }
 
 export interface ImportResult {
+  imagesImported?: number;
   total: number;
   success: number;
   failed: number;
