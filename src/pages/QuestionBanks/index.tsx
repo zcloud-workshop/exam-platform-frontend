@@ -263,7 +263,7 @@ export default function QuestionBanksPage() {
       setImportArchive(null);
       setImportFile(null);
       setImportName('');
-      if (file.size > 10 * 1024 * 1024) {
+      if (file.size > 100 * 1024 * 1024) {
         message.error(t('questionBanks_page.fileTooLarge'));
         return false;
       }
@@ -285,8 +285,12 @@ export default function QuestionBanksPage() {
           message.error(t('questionBanks_page.invalidArchive'));
           return false;
         }
-        if (parsed.meta.version !== 1) {
+        if (![1, 2].includes(parsed.meta.version)) {
           message.error(t('questionBanks_page.unsupportedVersion'));
+          return false;
+        }
+        if (parsed.meta.version === 2 && !Array.isArray(parsed.images)) {
+          message.error(t('questionBanks_page.invalidArchive'));
           return false;
         }
         setImportArchive(parsed);
@@ -323,6 +327,7 @@ export default function QuestionBanksPage() {
         setImportSummary({
           categoriesImported: 0,
           questionsImported: summary.success,
+          imagesImported: summary.imagesImported,
           skipped: 0,
           errors: summary.errors.map((error) => ({
             message: `${t('questions_page.row', { row: error.row })}: ${error.message}`,
@@ -647,7 +652,7 @@ export default function QuestionBanksPage() {
             </Upload>
             {importArchive && (
               <div style={{ color: 'var(--muted)' }}>
-                {t('questionBanks_page.archiveLoaded', { name: importArchive.meta.name, categories: importArchive.categories.length, questions: importArchive.questions.length })}
+                {t('questionBanks_page.archiveLoaded', { name: importArchive.meta.name, categories: importArchive.categories.length, questions: importArchive.questions.length, images: importArchive.images?.length ?? 0 })}
               </div>
             )}
             {importFile && !importArchive && <div>{importFile.name}</div>}
@@ -688,6 +693,7 @@ export default function QuestionBanksPage() {
               message={excelSummary
                 ? t('questions_page.imported', { success: excelSummary.success, total: excelSummary.total, failed: excelSummary.failed })
                 : t('questionBanks_page.importSummary', { categories: importSummary.categoriesImported, questions: importSummary.questionsImported, skipped: importSummary.skipped })}
+              description={t('questionBanks_page.imageSummary', { count: importSummary.imagesImported ?? 0 })}
             />
             {importSummary.errors.length > 0 && (
               <Alert
