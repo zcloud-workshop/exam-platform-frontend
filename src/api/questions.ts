@@ -30,7 +30,7 @@ export function deleteQuestion(id: string) {
 }
 
 export function exportQuestions(bankId: string, categoryId?: string, filename = 'questions.xlsx') {
-  return downloadFile('/questions/export', filename, { bankId, categoryId });
+  return downloadFile('/questions/export', filename, { bankId, categoryId }, 180000);
 }
 
 export function importQuestions(bankId: string, file: File) {
@@ -38,6 +38,7 @@ export function importQuestions(bankId: string, file: File) {
   formData.append('file', file);
   return request.post<any, ApiResponse<ImportResult>>('/questions/import', formData, {
     params: { bankId },
+    timeout: 180000,
   });
 }
 
@@ -45,5 +46,5 @@ export function createBankFromExcel(file: File, name: string) {
   const formData = new FormData();
   formData.append('file', file);
   formData.append('name', name);
-  return request.post<any, ApiResponse<{ bankId: string; summary: ImportResult }>>('/questions/import/new-bank', formData);
+  return request.post<any, ApiResponse<{ bankId: string; summary: ImportResult }>>('/questions/import/new-bank', formData, { timeout: 180000 });
 }
