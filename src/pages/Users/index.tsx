@@ -5,7 +5,7 @@ import { formatDateTime } from '@/utils/format';
 import type { ColumnsType } from 'antd/es/table';
 import { useTranslation } from 'react-i18next';
 import { getUsers, createUser, updateUser, deleteUser } from '@/api/users';
-import type { UserResponse, CreateUserRequest } from '@/types/user';
+import type { UserResponse } from '@/types/user';
 import { Role } from '@/types/enums';
 import { getRoleLabel } from '@/utils/constants';
 import { useBreakpoint } from '@/hooks/useBreakpoint';
@@ -62,7 +62,11 @@ export default function UsersPage() {
       await updateUser(editingUser.id, updateData);
       message.success(t('users.userUpdated'));
     } else {
-      await createUser(values as CreateUserRequest);
+      await createUser({
+        username: values.username,
+        password: values.password,
+        role: values.role,
+      });
       message.success(t('users.userCreated'));
     }
     setModalOpen(false);
