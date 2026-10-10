@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Button, Form, Modal, Select, Table, Tag, Typography, message } from 'antd';
+import { Button, Form, Modal, Popconfirm, Select, Table, Tag, Typography, message } from 'antd';
 import type { ColumnsType } from 'antd/es/table';
 import { useTranslation } from 'react-i18next';
-import { createRegistrationInvite, getRegistrationInvites } from '@/api/users';
+import { createRegistrationInvite, deleteRegistrationInvite, getRegistrationInvites } from '@/api/users';
 import { Role } from '@/types/enums';
 import type { RegistrationInviteResponse } from '@/types/user';
 import { getRoleLabel } from '@/utils/constants';
@@ -14,6 +14,7 @@ export default function RegistrationInvites({ onClose }: { onClose: () => void }
   const [invites, setInvites] = useState<RegistrationInviteResponse[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -37,6 +38,19 @@ export default function RegistrationInvites({ onClose }: { onClose: () => void }
     }
   };
 
+  const handleDelete = async (id: string) => {
+    setDeletingId(id);
+    try {
+      await deleteRegistrationInvite(id);
+      setInvites((current) => current.filter((invite) => invite.id !== id));
+      message.success(t('users.inviteDeleted'));
+    } catch {
+      // error handled by interceptor
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
   const columns: ColumnsType<RegistrationInviteResponse> = [
     {
       title: t('auth.inviteCode'), dataIndex: 'code',
@@ -53,6 +67,18 @@ export default function RegistrationInvites({ onClose }: { onClose: () => void }
     {
       title: t('users.createdAt'), dataIndex: 'createdAt',
       render: (value: string) => formatDateTime(value),
+    },
+    {
+      title: t('common.actions'), key: 'actions', fixed: 'right',
+      render: (_, invite) => (
+        <Popconfirm title={t('users.deleteInvite')} description={t('users.deleteInviteDescription')}
+          onConfirm={() => handleDelete(invite.id)} disabled={deletingId !== null}
+          okText={t('common.delete')} cancelText={t('common.cancel')}>
+          <Button type="link" danger loading={deletingId === invite.id} disabled={deletingId !== null}>
+            {t('common.delete')}
+          </Button>
+        </Popconfirm>
+      ),
     },
   ];
 
