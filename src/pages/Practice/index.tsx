@@ -446,7 +446,6 @@ function PracticeContent() {
               </Typography.Text>
               <Space>
                 <Tag>{getQuestionTypeLabel(currentQ.type as QuestionType)}</Tag>
-                <Tag>{currentQ.score} {t('common.score')}</Tag>
                 <Button icon={currentQ.isFavorite ? <StarFilled /> : <StarOutlined />} onClick={toggleFavorite} loading={favoriting} disabled={collectionChanged || checking}>{t(currentQ.isFavorite ? 'practice.unfavorite' : 'practice.favorite')}</Button>
               </Space>
             </div>
