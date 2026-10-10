@@ -11,6 +11,10 @@ export function getRegistrationInvites() {
   return request.get<any, ApiResponse<RegistrationInviteResponse[]>>('/users/registration-invites');
 }
 
+export function deleteRegistrationInvite(id: string) {
+  return request.delete<any, ApiResponse<{ success: boolean }>>(`/users/registration-invites/${id}`);
+}
+
 export function createUser(data: CreateUserRequest) {
   return request.post<any, ApiResponse<UserResponse>>('/users', data);
 }
