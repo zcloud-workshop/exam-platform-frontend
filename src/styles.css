@@ -53,7 +53,7 @@ h2 { font-size: 22px; letter-spacing: -.5px; margin: 0; }
 .page-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 24px; }
 .page-heading .ant-typography { margin: 0; }
 .eyebrow { display: block; font-size: 12px; letter-spacing: 1.5px; font-weight: 600; color: var(--accent); margin-bottom: 14px; }
-.hero { background: var(--hero-bg); border: 1px solid var(--border); border-radius: 24px; padding: 64px 52px; display: grid; grid-template-columns: 1.35fr 1fr; align-items: center; gap: 48px; }
+.hero { background: var(--hero-bg); border: 1px solid var(--border); border-radius: 24px; padding: 64px 52px; margin-bottom: 48px; display: grid; grid-template-columns: 1.35fr 1fr; align-items: center; gap: 48px; }
 .hero h1.ant-typography { font-size: clamp(32px, 3.8vw, 50px); line-height: 1.22; letter-spacing: -1.5px; margin: 0 0 24px; max-width: 650px; text-wrap: balance; }
 .hero-description { font-size: 16px; line-height: 1.9; max-width: 550px; margin-bottom: 28px !important; }
 .hero .ant-btn-lg { min-height: 46px; padding-inline: 22px; }
@@ -64,11 +64,6 @@ h2 { font-size: 22px; letter-spacing: -.5px; margin: 0; }
 .step-number { width: 38px; height: 38px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; font-size: 13px; font-weight: 700; flex-shrink: 0; }
 .path-step strong { display: block; margin-bottom: 3px; }
 .path-step p { color: var(--muted); font-size: 13px; margin: 0; }
-.feature-grid { margin: 28px 0 48px; }
-.feature-item { padding: 24px; height: 100%; border-bottom: 1px solid var(--border); }
-.feature-icon { color: var(--accent); font-size: 23px; display: block; margin-bottom: 14px; }
-.feature-item h3 { font-size: 16px; margin: 0 0 8px; }
-.feature-item p { color: var(--muted); font-size: 14px; line-height: 1.8; margin: 0; }
 .section-description { color: var(--muted); margin: 8px 0 0; font-size: 14px; }
 .bank-card { height: 100%; display: flex; flex-direction: column; }
 .bank-card .ant-card-body { flex: 1; }
@@ -161,13 +156,9 @@ h2 { font-size: 22px; letter-spacing: -.5px; margin: 0; }
   .public-nav > .ant-btn, .public-nav > .ant-dropdown-trigger { padding-inline: 10px; }
   .header-divider { display: none; }
   .page-container { padding: 24px 16px 40px; }
-  .hero { padding: 28px 24px; grid-template-columns: 1fr; gap: 32px; border-radius: 18px; }
+  .hero { padding: 28px 24px; margin-bottom: 32px; grid-template-columns: 1fr; gap: 32px; border-radius: 18px; }
   .hero h1.ant-typography { font-size: 34px; }
   .hero-description { font-size: 14px; }
-  .feature-grid { margin: 16px 0 32px; }
-  .feature-item { padding: 20px 8px; }
-  .feature-icon { float: left; margin-right: 18px; margin-top: 3px; }
-  .feature-item h3, .feature-item p { margin-left: 42px; }
   .app-header { padding-inline: 12px; }
   .app-content { margin: 20px 12px; }
   .dashboard-welcome { padding: 24px; }
