@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { Layout, Button, Row, Col, Typography, Empty, Spin, Space } from 'antd';
 import {
-  BookOutlined, ScheduleOutlined, TrophyOutlined,
+  BookOutlined, ScheduleOutlined,
   SafetyCertificateOutlined, ArrowRightOutlined, CheckCircleOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
@@ -40,12 +40,6 @@ export default function HomePage() {
 
   const handleExam = () => navigate(user ? '/exams' : '/login');
 
-  const features = [
-    { icon: <BookOutlined />, title: t('home.feature1Title'), desc: t('home.feature1Desc') },
-    { icon: <ScheduleOutlined />, title: t('home.feature2Title'), desc: t('home.feature2Desc') },
-    { icon: <TrophyOutlined />, title: t('home.feature3Title'), desc: t('home.feature3Desc') },
-  ];
-
   return (
     <Layout style={{ minHeight: '100vh' }}>
       <PublicHeader />
@@ -73,19 +67,6 @@ export default function HomePage() {
               </div>
             ))}
           </div>
-        </section>
-
-        <section className="feature-grid" aria-label={t('home.featuresTitle')}>
-          <Row gutter={[24, 0]}>
-            {features.map((feature) => (
-              <Col key={feature.title} xs={24} sm={8}>
-                <div className="feature-item">
-                  <span className="feature-icon">{feature.icon}</span>
-                  <h3>{feature.title}</h3><p>{feature.desc}</p>
-                </div>
-              </Col>
-            ))}
-          </Row>
         </section>
 
         <section>
