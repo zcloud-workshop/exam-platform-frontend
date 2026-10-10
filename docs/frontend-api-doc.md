@@ -59,6 +59,7 @@
 | `getUsers` | `GET /users` | 无分页参数 | `UserResponse[]` |
 | `createRegistrationInvite` | `POST /users/registration-invites` | 目标系统角色, 仅超级管理员 | `RegistrationInviteResponse` |
 | `getRegistrationInvites` | `GET /users/registration-invites` | 仅超级管理员, 按创建时间降序 | `RegistrationInviteResponse[]` |
+| `deleteRegistrationInvite` | `DELETE /users/registration-invites/:id` | 邀请码 ID, 仅超级管理员; 不存在或已删除返回 404 | `{ success: boolean }` |
 | `updateUser` | `PATCH /users/:id` | `UpdateUserRequest` | `UserResponse` |
 | `deleteUser` | `DELETE /users/:id` | 用户 ID | `void` |
 
