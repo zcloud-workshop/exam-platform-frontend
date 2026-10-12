@@ -2,6 +2,8 @@
 
 基于 React 的在线考试平台, 提供公开练习、题库协作、试卷管理、考试作答、成绩查看和 AI 辅助功能.
 
+后端仓库: [exam-platform](https://github.com/zcloud-workshop/exam-platform).
+
 ## 启动
 
 ```sh
